@@ -7,7 +7,6 @@ from sklearn.model_selection import train_test_split
 
 
 base_path_train = 'TRAIN/BAAC-Annee-2019/'
-#data_test = pd.read_csv('chemin_vers_le_fichier_test.csv')
 
 caracteristiques = pd.read_csv(base_path_train + 'caracteristiques_2019_.csv', sep=';')
 lieux = pd.read_csv(base_path_train + 'lieux_2019_.csv', sep=';')
@@ -52,6 +51,8 @@ merged_data = pd.merge(merged_data, vehicules, on='Num_Acc', how='outer')
 # Avant de fusionner avec usagers, assure-toi que id_vehicule et num_veh sont utilisés correctement
 # Assure-toi que les colonnes id_vehicule et num_veh sont bien nommées et consistentes dans tous les DataFrames
 merged_data = pd.merge(merged_data, usagers, on=['Num_Acc', 'id_vehicule', 'num_veh'], how='outer')
+# Création de la variable cible GRAVE
+merged_data['GRAVE'] = merged_data['grav'].apply(lambda x: 1 if x in [2, 3] else 0)
 
 # Show the first few rows of the fully merged dataframe to verify the structure
 print(merged_data.info())
@@ -75,11 +76,11 @@ print(merged_data.shape)
 
 
 # Selecting features - for now, we'll select a subset that might seem relevant
-features = merged_data.drop(columns=['grav', 'Num_Acc', 'id_vehicule', 'num_veh', 'an', 'an_nais', 'hrmn', 'dep', 'com', 'adr', 'voie','v2', 'actp', 'pr', 'pr1'])  # excluding identifiers and the target variable
-#features = merged_data[['jour', 'mois', 'lum', 'agg', 'int', 'atm', 'col', 'catr', 'circ', 'surf', 'infra', 'situ', 'vma']]
+#features = merged_data.drop(columns=['grav','GRAVE', 'Num_Acc', 'id_vehicule', 'num_veh', 'an', 'an_nais', 'hrmn', 'dep', 'com', 'adr', 'voie','v2', 'actp', 'pr', 'pr1'])  # excluding identifiers and the target variable
+features = merged_data[['jour', 'mois', 'lum', 'agg', 'int', 'atm', 'col', 'lat', 'long', 'catr', 'v1', 'circ', 'nbv', 'vosp', 'prof', 'plan', 'lartpc', 'larrout', 'surf', 'infra', 'situ', 'vma', 'senc', 'catv', 'obs', 'obsm', 'choc', 'manv', 'motor', 'occutc', 'place', 'catu', 'sexe', 'trajet', 'secu1', 'secu2', 'secu3', 'locp', 'etatp']]
 print(merged_data.isnull().sum())
 # Define the target variable again
-target = merged_data['grav'] 
+target = merged_data['GRAVE'] 
 
 
 #analyse
@@ -102,7 +103,7 @@ correlation_matrix = merged_data.corr()
 plt.figure(figsize=(10, 8))
 sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap='coolwarm')
 plt.title('Matrice de Corrélation')
-plt.show()
+#plt.show()
 
 
 
@@ -128,3 +129,111 @@ print("Accuracy:", accuracy)
 
 # Tu peux également prédire de nouvelles données
 # new_data_predictions = model.predict(new_data)
+
+
+
+###TEST
+
+base_path_test = 'TEST/TEST/'
+
+caracteristiques_test = pd.read_csv(base_path_test + 'CARACTERISTIQUES.csv')
+lieux_test = pd.read_csv(base_path_test + 'LIEUX.csv')
+usagers_test = pd.read_csv(base_path_test + 'USAGERS.csv')
+vehicules_test = pd.read_csv(base_path_test + 'VEHICULES.csv')
+
+
+
+# Correction de l'imputation en utilisant la bonne colonne
+caracteristiques_test['adr'].fillna('Inconnue', inplace=True)  # Imputer 'adr' avec 'Inconnue'
+lieux_test['voie'].fillna('Non spécifiée', inplace=True)
+# Assumer que 'v1' est 0 là où l'information est manquante, si cela est logique selon le contexte
+lieux_test['v1'].fillna(0, inplace=True)
+lieux_test['v2'].fillna('Non spécifié', inplace=True)
+# Assumer que 'lartpc' et 'larrout' sont 0 s'il n'y a pas d'information
+lieux_test['lartpc'].fillna(0, inplace=True)
+lieux_test['larrout'].fillna(0, inplace=True)
+# Assumer que 'occutc' est 0 s'il n'y a pas d'information dans le DataFrame 'vehicules'
+vehicules_test['occutc'].fillna(0, inplace=True)
+# Conversion des colonnes 'lat' et 'long' en float dans le dataframe caracteristiques
+#pas la même chose que train ATTENTION
+# Convertir les données en chaînes si ce n'est pas déjà le cas
+caracteristiques_test['lat'] = caracteristiques_test['lat'].astype(str)
+caracteristiques_test['long'] = caracteristiques_test['long'].astype(str)
+# Remplacer les virgules par des points et convertir en float
+caracteristiques_test['lat'] = caracteristiques_test['lat'].str.replace(',', '.').astype(float)
+caracteristiques_test['long'] = caracteristiques_test['long'].str.replace(',', '.').astype(float)
+caracteristiques_test['atm'].fillna(-1, inplace=True)
+caracteristiques_test['lat'].fillna(-999, inplace=True)
+caracteristiques_test['long'].fillna(-999, inplace=True)
+
+
+lieux_test['lartpc'] = lieux_test['lartpc'].astype(str)
+lieux_test['larrout'] = lieux_test['larrout'].astype(str)
+# Remplacer les virgules par des points et convertir en float
+lieux_test['lartpc'] = lieux_test['lartpc'].str.replace(',', '.').astype(float)
+lieux_test['larrout'] = lieux_test['larrout'].str.replace(',', '.').astype(float)
+lieux_test['circ'].fillna(-1, inplace=True)
+lieux_test['nbv'].fillna(-1, inplace=True)
+lieux_test['vosp'].fillna(-1, inplace=True)
+lieux_test['prof'].fillna(-1, inplace=True)
+lieux_test['plan'].fillna(-1, inplace=True)
+lieux_test['surf'].fillna(-1, inplace=True)
+lieux_test['infra'].fillna(-1, inplace=True)
+lieux_test['situ'].fillna(-1, inplace=True)
+lieux_test['vma'].fillna(-1, inplace=True)
+
+vehicules_test['senc'].fillna(-1, inplace=True)
+vehicules_test['obs'].fillna(-1, inplace=True)
+vehicules_test['obsm'].fillna(-1, inplace=True)
+vehicules_test['choc'].fillna(-1, inplace=True)
+vehicules_test['manv'].fillna(-1, inplace=True)
+vehicules_test['motor'].fillna(-1, inplace=True)
+
+usagers_test['place'].fillna(10, inplace=True)
+usagers_test['trajet'].fillna(-1, inplace=True)
+usagers_test['secu1'].fillna(-1, inplace=True)
+usagers_test['secu2'].fillna(-1, inplace=True)
+usagers_test['secu3'].fillna(-1, inplace=True)
+
+usagers_test['locp'].fillna(-1, inplace=True)
+usagers_test['etatp'].fillna(-1, inplace=True)
+
+
+#columns_to_check = ['jour', 'mois', 'lum', 'agg', 'int', 'atm', 'col', 'lat', 'long', 'catr', 'v1', 'circ', 'nbv', 'vosp', 'prof', 'plan', 'lartpc', 'larrout', 'surf', 'infra', 'situ', 'vma', 'senc', 'catv', 'obs', 'obsm', 'choc', 'manv', 'motor', 'occutc', 'place', 'catu', 'sexe', 'trajet', 'secu1', 'secu2', 'secu3', 'locp', 'etatp']
+
+
+# Vérification après nettoyage
+print("VERIF")
+print(caracteristiques_test.isnull().sum())
+print(lieux_test.isnull().sum())
+print(vehicules_test.isnull().sum())
+print(usagers_test.isnull().sum())
+
+
+# Appliquer le même nettoyage de données que pour l'ensemble d'entraînement
+
+merged_data_test = pd.merge(caracteristiques_test, lieux_test, on='Num_Acc', how='outer')
+merged_data_test = pd.merge(merged_data_test, vehicules_test, on='Num_Acc', how='outer')
+#pas la même chose que train ATTENTION
+merged_data_test = pd.merge(merged_data_test, usagers_test, on='Num_Acc', how='outer')
+
+
+
+test_features = merged_data_test[features.columns]  # Utilise les mêmes noms de colonnes que dans 'features'
+print("VERIF NULL")
+print(test_features.isnull().sum())
+#### Prédiction de `grav`
+predicted_grav = model.predict(test_features)  # Assurez-vous que le modèle est bien entraîné et disponible
+
+### Création de `GRAVE` basée sur les prédictions de `grav`
+merged_data_test['grav'] = predicted_grav  # Ajout de la prédiction au DataFrame
+merged_data_test['GRAVE'] = merged_data_test['grav'].apply(lambda x: 1 if x in [2, 3] else 0)
+
+### Création du fichier de soumission
+submission = pd.DataFrame({
+    'Num_Acc': merged_data_test['Num_Acc'],
+    'GRAVE': merged_data_test['grav']
+})
+submission.to_csv('submission.csv', index=False)
+
+#GRAVE n'est pas bon, il doit prédure 1 , 2, 3 , 4 et trop de lignes dans le sumission 
