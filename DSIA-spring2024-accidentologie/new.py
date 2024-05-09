@@ -28,7 +28,6 @@ def clean_caracteristiques(filepath, delimiter=','):
 
     df['dep'] = df['dep'].apply(lambda x: '0' if x in ['2A', '2B', '2B033'] else x)
 
-
     return df
 
 
@@ -69,6 +68,10 @@ def clean_usagers(filepath, delimiter=','):
         df.drop(columns='Unnamed: 0', inplace=True)
     if 'secu' in df.columns:
         df.drop(columns='secu', inplace=True)
+    if 'id_usager' in df.columns:
+        df.drop(columns='id_usager', inplace=True)
+    if 'id_vehicule' in df.columns:
+        df['id_vehicule'] = df['id_vehicule'].astype(str)
     
     df['actp'] = pd.to_numeric(df['actp'], errors='coerce')
     df['actp'].fillna(-1, inplace=True)
@@ -102,7 +105,7 @@ lieux_train = clean_lieux(base_path_train + 'lieux_2019_.csv', delimiter=';')
 lieux_test = clean_lieux(base_path_test + 'LIEUX.csv')
 
 #print("Info des lieux test nettoyées:")
-##lieux_test.info()
+#lieux_test.info()
 #print("\nValeurs manquantes test dans chaque colonne:")
 #print(lieux_test.isnull().sum())
 #print("Info des lieux train nettoyées:")
@@ -155,7 +158,7 @@ bdd_train = pd.merge(bdd_train, usagers_train, on=['Num_Acc', 'id_vehicule', 'nu
 #bdd_test = pd.merge(bdd_test, usagers_test, on=['Num_Acc', 'id_vehicule', 'num_veh'], how='outer')
 #bdd_test.to_csv('test_final.csv', index=False)
 
-
+bdd_test = pd.read_csv('test_final.csv')
 
 print(bdd_train.head())
 print(bdd_train.shape[0])
@@ -190,8 +193,8 @@ bdd_train.drop('is_grave', axis=1, inplace=True)
 
 
 # Afficher les lignes où la colonne 'grav' est nulle
-null_grav_rows = bdd_train[bdd_train['grav'].isnull()]
-print(null_grav_rows)
+#null_grav_rows = bdd_train[bdd_train['grav'].isnull()]
+#print(null_grav_rows)
 
 # Configurer Pandas pour afficher plus de colonnes
 #pd.set_option('display.max_columns', None)  # Aucune limitation sur le nombre de colonnes affichées
@@ -272,12 +275,17 @@ bdd_train = bdd_train.dropna(subset=['grav'])
 # Sauvegarder le DataFrame nettoyé dans un nouveau fichier CSV
 #bdd_train.to_csv('train_fichier_nettoye.csv', index=False)
 
-print(bdd_train.isnull().sum())
-print(bdd_train.shape[0])
+#print(bdd_train.isnull().sum())
+#print(bdd_train.shape[0])
 
 print(bdd_train.dtypes)
 
 bdd_train.to_csv('train_final.csv', index=False)
+print(bdd_test.isnull().sum())
+
+bdd_test.drop(columns='id_vehicule', inplace=True)
+
+
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
@@ -335,3 +343,25 @@ y_proba = forest_selected.predict_proba(X_val)[:, 1]  # probabilités pour la cl
 auc_score = roc_auc_score(y_val, y_proba)
 print("AUC:", auc_score)
 
+
+#TEST FINAL
+X_test = model.transform(bdd_test)  # Utilisez le même objet SelectFromModel
+X_test_selected = pd.DataFrame(X_test, columns=selected_features)
+
+# Vérifier si les colonnes sont les mêmes
+print("Colonnes d'entraînement:", X_train.columns.tolist())
+print("Colonnes de test après transformation:", X_test.columns.tolist())
+
+# Prédictions sur l'ensemble de test
+y_test_pred = forest_selected.predict(X_test_selected)
+
+# Si nécessaire, calculez les probabilités pour évaluer l'AUC ou pour d'autres besoins
+y_test_proba = forest_selected.predict_proba(X_test_selected)[:, 1]
+
+# Évaluation des prédictions
+# Vous pouvez calculer des métriques spécifiques comme l'accuracy ou l'AUC
+test_accuracy = accuracy_score(test_df['GRAVE'], y_test_pred)  # Assurez-vous que test_df['GRAVE'] existe et est bien la variable cible
+test_auc = roc_auc_score(test_df['GRAVE'], y_test_proba)
+
+print("Précision sur l'ensemble de test:", test_accuracy)
+print("AUC sur l'ensemble de test:", test_auc)
