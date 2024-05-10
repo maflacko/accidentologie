@@ -236,4 +236,3 @@ submission = pd.DataFrame({
 })
 submission.to_csv('submission.csv', index=False)
 
-#GRAVE n'est pas bon, il doit prédure 1 , 2, 3 , 4 et trop de lignes dans le sumission 

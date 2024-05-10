@@ -1,9 +1,9 @@
 import pandas as pd
+from sklearn.preprocessing import LabelEncoder
 
 ##Nettoyage
 def clean_caracteristiques(filepath, delimiter=','):
     df = pd.read_csv(filepath, delimiter=delimiter)
-    
     # Suppression d'une colonne non désirée si elle existe
     if 'Unnamed: 0' in df.columns:
         df.drop(columns='Unnamed: 0', inplace=True)
@@ -15,11 +15,13 @@ def clean_caracteristiques(filepath, delimiter=','):
 
     # Mode et imputation pour 'hrmn'
     #df.drop(columns='hrmn', inplace=True)
-    hrmn_mode = df['hrmn'].mode()
-    if not hrmn_mode.empty:
-        df['hrmn'].fillna(hrmn_mode[0], inplace=True)
-    else:
-        df['hrmn'].fillna(pd.Timestamp('00:00').time(), inplace=True)
+#    hrmn_mode = df['hrmn'].mode()
+#    if not hrmn_mode.empty:
+#        df['hrmn'].fillna(hrmn_mode[0], inplace=True)
+#    else:
+#        df['hrmn'].fillna(pd.Timestamp('00:00').time(), inplace=True)
+
+    df['hrmn'] = df['hrmn'].apply(lambda x: str(x).replace(':', ''))
 
     df['lat'] = df['lat'].astype(str).str.replace(',', '.').astype(float)
     df['long'] = df['long'].astype(str).str.replace(',', '.').astype(float)
@@ -69,8 +71,7 @@ def clean_usagers(filepath, delimiter=','):
     if 'secu' in df.columns:
         df.drop(columns='secu', inplace=True)
     if 'id_usager' in df.columns:
-        df.drop(columns='id_usager', inplace=True)
-     
+        df.drop(columns='id_usager', inplace=True) 
     if 'id_vehicule' in df.columns:
         df['id_vehicule'] = df['id_vehicule'].apply(lambda x: ''.join(str(x).split()).replace('.0', ''))    
     df['actp'] = pd.to_numeric(df['actp'], errors='coerce')
@@ -98,27 +99,21 @@ lieux_test = clean_lieux(base_path_test + 'LIEUX.csv')
 vehicules_train = clean_vehicules(base_path_train + 'vehicules_2019_.csv',  delimiter=';')
 vehicules_test = clean_vehicules(base_path_test + 'VEHICULES.csv')
 
-
 usagers_train = clean_usagers(base_path_train + 'usagers_2019_.csv',  delimiter=';')
 usagers_test = clean_usagers(base_path_test + 'USAGERS.csv')
 
 
-
-print(vehicules_train.head())
-print(vehicules_test.head())
-print(vehicules_test.isnull().sum())
+#print(vehicules_train.head())
+#print(vehicules_test.head())
+#print(vehicules_test.isnull().sum())
 
 
 #print(vehicules_train.dtypes)
-print(vehicules_test.dtypes)
-print(usagers_test.dtypes)
+#print(vehicules_test.dtypes)
+#print(usagers_test.dtypes)
 
-print(vehicules_test.isnull().sum())
-def clean_id_vehicule(df):
-    # Assurer que la colonne est une chaîne et supprimer les espaces
-    if 'id_vehicule' in df.columns:
-        df['id_vehicule'] = df['id_vehicule'].apply(lambda x: ''.join(str(x).split()).replace('.0', ''))
-    return df
+#print(vehicules_test.isnull().sum())
+
 
 # Appliquer le nettoyage à chaque DataFrame
 #vehicules_test = clean_id_vehicule(vehicules_test)
@@ -149,13 +144,13 @@ bdd_test = bdd_test.dropna(subset=['an_nais'])
 
 #print(bdd_train.head())
 #print(bdd_train.shape[0])
-print(bdd_test.head())
+#print(bdd_test.head())
 
 
-print("VERIF")
-print(bdd_test.isnull().sum())
+#print("VERIF")
+#print(bdd_test.isnull().sum())
 
-print(bdd_test.shape[0])
+#print(bdd_test.shape[0])
 
 
 bdd_test.to_csv('test.csv', index=False)
@@ -198,6 +193,37 @@ ax[1].set_ylabel('Count')
 plt.tight_layout()
 #plt.show()
 
+# Afficher le résumé statistique pour observer d'autres caractéristiques potentiellement intéressantes
+print(summary_stats)
+
+
+# Calcul de la matrice de corrélation pour toutes les variables numériques fournies
+all_columns = [
+    'Num_Acc', 'jour', 'mois', 'an', 'lum', 'dep', 'com', 'agg', 'int', 'atm', 'col',
+    'adr', 'lat', 'long', 'catr', 'circ', 'nbv', 'vosp', 'prof', 'plan', 'lartpc', 'larrout', 'surf',
+    'infra', 'situ', 'vma', 'id_vehicule', 'num_veh', 'senc', 'catv', 'obs', 'obsm', 'choc', 'manv',
+    'motor', 'occutc', 'place', 'catu', 'grav', 'sexe', 'an_nais', 'trajet', 'secu1', 'secu2', 'secu3',
+    'locp', 'actp', 'etatp', 'GRAVE'
+]
+
+# Filtrer le dataframe pour ne garder que les colonnes numériques
+numerical_data = bdd_train[all_columns].select_dtypes(include=['float64', 'int64'])
+
+# Calcul de la matrice de corrélation pour les variables numériques sélectionnées
+full_corr_matrix = numerical_data.corr()
+
+# Affichage de la matrice de corrélation complète avec un heatmap
+plt.figure(figsize=(12, 10))
+sns.heatmap(full_corr_matrix, annot=False, cmap='coolwarm', linewidths=.5)
+plt.title('Heatmap of Full Correlation Matrix')
+#plt.show()
+
+# Identifier les corrélations significatives avec 'GRAVE'
+significant_correlations = full_corr_matrix['GRAVE'].sort_values(key=abs, ascending=False)
+
+# Afficher les variables qui ont une corrélation supérieure à un seuil significatif (par exemple 0.05)
+significant_vars = significant_correlations[abs(significant_correlations) > 0.05]
+print(significant_vars)
 
 
 #PRETRAITEMENT DES DONNEES (valeurs manquantes + encodage si necessaire)
@@ -209,81 +235,75 @@ plt.tight_layout()
 # Supprimer les lignes où 'grav' est NaN
 bdd_train = bdd_train.dropna(subset=['grav'])
 
+#suppression des colonnes non pertinentes à l'entrainement modèle
+bdd_train.drop(columns=['grav', 'id_vehicule', 'com', 'adr', 'num_veh'], inplace=True)
+bdd_test.drop(columns=['id_vehicule', 'com', 'adr', 'num_veh'], inplace=True)
+
+#le = LabelEncoder()
+#bdd_train['dep'] = le.fit_transform(bdd_train['dep'])
+#bdd_test['dep'] = le.fit_transform(bdd_test['dep'])
 
 bdd_train.to_csv('train_final.csv', index=False)
 bdd_test.to_csv('test_final.csv', index=False)
 
+print(bdd_train.isnull().sum()) #50 colonnes (grav + GRAVE)
+print(bdd_test.isnull().sum()) #48 colonnes
+
+print(bdd_test.dtypes)
+
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import SelectFromModel
-
-#Formation du Modèle
-#Division des données
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
 
-#bdd_train = bdd_train.drop(['com', 'hrmn', 'adr'], axis=1)
-X = bdd_train[['an', 'jour', 'mois', 'an_nais', 'lum', 'agg', 'int', 'atm', 'col', 'lat', 'long', 'catr', 'circ', 'nbv', 'vosp', 'prof', 'plan', 'lartpc', 'larrout', 'surf', 'infra', 'situ', 'vma', 'senc', 'catv', 'obs', 'obsm', 'choc', 'manv', 'motor', 'occutc', 'place', 'catu', 'sexe', 'trajet', 'secu1', 'secu2', 'secu3', 'locp', 'etatp', 'actp']]
+# Préparation des données
+X_train = bdd_train.drop(columns=['GRAVE'])  # Exclure la variable cible
+y_train = bdd_train['GRAVE']  # Variable cible
 
-# Supposons que 'df' est votre DataFrame
-#X = bdd_train.drop('GRAVE', axis=1)  # Toutes les variables sauf la cible
+# Entraînement du modèle Random Forest initial
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
 
-y = bdd_train['GRAVE']  # La variable cible
+# Obtention et tri des importances des caractéristiques
+feature_importances = rf_model.feature_importances_
+features = pd.DataFrame({
+    'Feature': X_train.columns,
+    'Importance': feature_importances
+}).sort_values(by='Importance', ascending=False)
 
+# Sélection des caractéristiques les plus importantes basées sur un seuil d'importance
+threshold = 0.01  # par exemple, 1% d'importance
+important_features = features[features['Importance'] >= threshold]['Feature']
 
-# Création et entraînement du modèle de forêt aléatoire
-forest = RandomForestClassifier(n_estimators=100, random_state=50)
-forest.fit(X, y)
+# Réduction de l'ensemble des données aux caractéristiques importantes
+X_train_reduced = X_train[important_features]
+X_test_reduced = bdd_test[important_features]
 
-# Sélection des caractéristiques basées sur l'importance
-model = SelectFromModel(forest, prefit=True)
-X_new = model.transform(X)  # X_new contient les caractéristiques sélectionnées
+# Réentraînement du modèle sur les caractéristiques sélectionnées
+rf_model_reduced = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model_reduced.fit(X_train_reduced, y_train)
 
-# Les caractéristiques sélectionnées peuvent être identifiées ainsi
-selected_features = X.columns[model.get_support()]
-print("Caractéristiques sélectionnées:", selected_features)
+# Prédictions pour la soumission
+y_test_proba = rf_model_reduced.predict_proba(X_test_reduced)[:, 1]
 
+# Création du fichier de soumission
+submission = pd.DataFrame({
+    'Num_Acc': bdd_test['Num_Acc'],
+    'GRAVE': y_test_proba
+})
+submission.to_csv('submission_reduced.csv', index=False)
 
-#Caractéristiques sélectionnées: Index(['jour', 'mois', 'an_nais', 'col', 'lat', 'long', 'catr', 'nbv', 'vma','catv', 'choc', 'manv', 'trajet', 'secu2', 'locp'],dtype='object')
-X_selected = pd.DataFrame(X_new, columns=selected_features)
+# Evaluation du modèle réduit (optionnel, pour votre information)
+#X_train_part, X_valid, y_train_part, y_valid = train_test_split(X_train_reduced, y_train, test_size=0.2, random_state=42)
+#y_pred_proba = rf_model_reduced.predict_proba(X_valid)[:, 1]
+#auc_score = roc_auc_score(y_valid, y_pred_proba)
+#print("AUC Score:", auc_score)
 
-# Division des données en 80% pour l'entraînement et 20% pour la validation
-X_train, X_val, y_train, y_val = train_test_split(X_selected, y, test_size=0.20, random_state=50)
+#print(bdd_train['GRAVE'].value_counts())
 
-# Afficher les dimensions des ensembles pour vérifier
-print(X_train.shape, X_val.shape)
+#from sklearn.model_selection import cross_val_score
 
-# Ré-entraînement du modèle sur les caractéristiques sélectionnées
-forest_selected = RandomForestClassifier(n_estimators=100, random_state=50)
-forest_selected.fit(X_train, y_train)
-
-from sklearn.metrics import accuracy_score, roc_auc_score
-
-# Faire des prédictions sur l'ensemble de validation
-y_pred = forest_selected.predict(X_val)
-
-# Calculer la précision
-accuracy = accuracy_score(y_val, y_pred)
-print("Précision:", accuracy)
-
-# Si vous voulez aussi l'AUC
-y_proba = forest_selected.predict_proba(X_val)[:, 1]  # probabilités pour la classe positive
-auc_score = roc_auc_score(y_val, y_proba)
-print("AUC:", auc_score)
-
-#TEST FINAL
-X_test = model.transform(bdd_test)  # Utilisez le même objet SelectFromModel
-X_test_selected = pd.DataFrame(X_test, columns=selected_features)
-
-# Prédictions sur l'ensemble de test
-y_test_pred = forest_selected.predict(X_test_selected)
-
-# Si nécessaire, calculez les probabilités pour évaluer l'AUC ou pour d'autres besoins
-y_test_proba = forest_selected.predict_proba(X_test_selected)[:, 1]
-
-# Évaluation des prédictions
-# Vous pouvez calculer des métriques spécifiques comme l'accuracy ou l'AUC
-test_accuracy = accuracy_score(test_df['GRAVE'], y_test_pred)  # Assurez-vous que test_df['GRAVE'] existe et est bien la variable cible
-test_auc = roc_auc_score(test_df['GRAVE'], y_test_proba)
-
-print("Précision sur l'ensemble de test:", test_accuracy)
-print("AUC sur l'ensemble de test:", test_auc)
+# Utiliser la validation croisée pour évaluer l'AUC
+#auc_scores = cross_val_score(rf_model_reduced, X_train, y_train, cv=5, scoring='roc_auc')
+#print("AUC scores from cross-validation:", auc_scores)
 

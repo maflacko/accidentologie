@@ -85,7 +85,6 @@ def clean_usagers(filepath, delimiter=','):
     return df
 
 
-
 base_path_test = 'TEST/TEST/'
 base_path_train = 'TRAIN/BAAC-Annee-2019/'
 
@@ -343,14 +342,9 @@ y_proba = forest_selected.predict_proba(X_val)[:, 1]  # probabilités pour la cl
 auc_score = roc_auc_score(y_val, y_proba)
 print("AUC:", auc_score)
 
-
 #TEST FINAL
 X_test = model.transform(bdd_test)  # Utilisez le même objet SelectFromModel
 X_test_selected = pd.DataFrame(X_test, columns=selected_features)
-
-# Vérifier si les colonnes sont les mêmes
-print("Colonnes d'entraînement:", X_train.columns.tolist())
-print("Colonnes de test après transformation:", X_test.columns.tolist())
 
 # Prédictions sur l'ensemble de test
 y_test_pred = forest_selected.predict(X_test_selected)
@@ -365,3 +359,4 @@ test_auc = roc_auc_score(test_df['GRAVE'], y_test_proba)
 
 print("Précision sur l'ensemble de test:", test_accuracy)
 print("AUC sur l'ensemble de test:", test_auc)
+
